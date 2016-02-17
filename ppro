@@ -1,0 +1,651 @@
+// PPRO AUTO TEST SCRIPT CHECKLIST:
+////////////////////////////////////
+// LS ADMIN:
+// - Customers: assert page exists, add new customer, verify new customer
+// - Moudles: assert page exists, upload new modules, verify new modules
+// - Administrators: assert page exists, add new LS admin, verify new admin
+
+// ACCOUNT ADMIN:
+// - New Project: assert page exists, invite team (manual, csv, xlsx), upload plans (single, multiple) , upload splaces (manual, csv, xlsx), verify new project exists
+// - Information: edit information, verify edits
+// - Plans: upload a plan(single, multiple), remove a plan
+// - Spaces: upload (manual, csv, xlsx), edit a space, remove a space, verify all changes made
+// - Team: upload (manual, csv, xlsx), edit a team member, remove a team member, verify all changes
+// - Reports: create new report, distribute report, verify report was sent
+// - List view: bulk edits
+
+// TEAM MEMBER:
+// - sign in to email, register for new poroject (added above)
+// - sign in to punch pro, verify project exists (new one added above)
+
+// - Information: assert page, able to view
+// - Plans: assert page, able to view
+// - Spaces: assert page, able to view, remove a space (manual space added above), verify its been removed
+// - Team: assert page, able to view, able to search
+// - Reports: assert page, able to view, able to distribute
+// - List view: bulk edits
+
+//GENERAL
+// - HTTP status
+// - Filtering (accross all account types)
+// - Profile Settings? (across all accounts)
+
+//SETUP
+phantom.casperTest = true;
+var casper = require('casper').create();
+var x = require('casper').selectXPath;
+casper.options.waitTimeout = 10000;
+
+//Accounts / Passwords:
+//LS Admin
+var lsadmin = "LinksystemsAd@yahoo.com"; //Email Login: LinksystemsAd@yahoo.com | Gizzmo13
+var lspw = "test";
+//Primary Contact
+var newaccadmin = "PrimaryContactProjectAd@yahoo.com"; //Email Login: PrimaryContactProjectAd@yahoo.com | Gizzmo13
+var accadmin = "PrimaryContactProjectAd@yahoo.com"; //was ngdtestelli@gmail.com
+var accadpw = "test";
+//Team Member
+var teammem = 'TeamMemberAccount@yahoo.com'; //"TeamMemberAccount@yahoo.com"; //Email Login: TeamMemberAccount@yahoo.com | Gizzmo13
+var tmpw = "test";
+
+//Uploaded Files:
+//LS Admin
+var modules = 'TestModule.csv';
+var admins = 'Admins.csv';
+
+//Team Members
+var wizteamcsv = 'wizard_csv.csv';
+var wizteamxlsx = 'wizard_xlsx.xlsx';
+var teamcsv = 'teamcsv.csv';
+var teamxlsx = 'teamxlsx.xlsx';
+
+//Spaces
+var wizspacescsv = 'space_template_csv_wizard.csv'; 
+var wizspacesxlsx = 'space_template_xlsx_wizard.xlsx';
+var spacescsv = 'space_template_csv.csv';
+var spacesxlsx = 'space_template_xlsx.xlsx';
+
+//Environment
+var env = 'http://uat1.punchproweb.com/customer/#/user/signin';  
+
+//Testing Toggles:
+//LS Admin Toggles
+
+var LSAdminTesting = false;
+var CreateNewUser = false;
+//Primary Contact Toggles
+var PrimContactAdminTesting = true;
+//Team Member Toggles
+var TeamMemberTesting = false;
+
+/*-------------------------------------------------------------------------------------*/
+
+var today = new Date();
+var dd = today.getDate();
+var mm = today.getMonth()+1; //January is 0!
+var yyyy = today.getFullYear();
+
+if(dd<10) {
+    dd='0'+dd
+} 
+
+if(mm<10) {
+    mm='0'+mm
+} 
+
+today = mm+'/'+dd+'/'+yyyy;
+
+/*-------------------------------------------------------------------------------------*/
+	//START  
+
+	casper.echo('Punch Pro Test Script - Env: ' + env, 'COMMENT');
+
+	   		//Sign in page
+	   		casper.start(env);
+
+	   		//Check HTTP status code
+	   		casper.then(function () {
+	   			var hsc = this.status(false);
+	   			casper.test.assert(hsc.currentHTTPStatus === 200, "Http Status Code: " + hsc.currentHTTPStatus);
+	   		});
+
+	   		//Assert page title
+	   		casper.then(function() {
+	   			casper.test.assertTitle("PunchPRO", "Sign In Page Loaded");
+	   			casper.capture("Scriptshots/PPRO_Home.png");
+	   		})
+
+	   		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//Sign In - as LS Admin 
+
+	   		if(LSAdminTesting == true){
+
+	   			casper.then(function() {
+	   				casper.echo("Beginning LinkSystems Account Admin Testing..." , 'COMMENT')
+	   				.sendKeys('#username', lsadmin)
+	   				.sendKeys('#userpassword', lspw)
+
+	   				.thenClick('#signin-page .pp-signin-button')
+	   				.then(function(){
+	   					casper.waitForSelector('#customer-list', function() {
+						//Verify Admin Account		
+						this.test.assertExists("#cmdlist",'Signed In -- as ' + lsadmin);
+					});	
+	   				});
+	   			})
+
+	   		//LS Admin: Customer List
+	   		//Assert page exists, add new customer, verify new customer
+	   		.then(function() {
+	   			casper.test.assertSelectorHasText('#site-title', 'Administration - Customers');
+	   			casper.capture("Scriptshots/LSAdmin_CustomerList.png");
+	   		})
+
+	   		//Create New User
+
+	   		if(CreateNewUser == true){
+	   			//Click new customer button
+	   			casper.thenClick("a[href='#/admin/customer/newcustomer']", function() {
+	   				casper.wait(3000, function() {
+	   					//Fill form. Note: may need a new email address
+	   					casper.fillSelectors('.wizard',{
+	   						'[ng-model="company_name"]': 'NGD Auto Script',
+	   						'#firstname': 'http://www.test.com',
+	   						'#lastname': '(123) 456-7890',
+	   						'#address':"1 NGD Test Street, PA 12345",
+	   						'#pc_email':newaccadmin,
+	   						'#pc_firstname':'Auto',
+	   						'#pc_lastname':'Bot',
+	   						'#pc_phone': '(098) 765-4321',
+	   					});
+	   				//Submit new customer
+	   				casper.capture("Scriptshots/LLAdmin_PreNewCustomer.png");
+	   				casper.thenClick(".wizard .pp-button.large.primary");  
+	   				//Verify new customer has been created
+	   				casper.wait(2000, function() {
+	   					casper.capture("Scriptshots/LLAdmin_PostNewCustomer.png");
+	   					casper.test.assertTextExists('NGD Auto Script', 'New Customer Added: ' + newaccadmin);
+	   				});
+	   			});
+	   			})
+	   		} else { casper.echo('Skipping: Create New Customer', 'COMMENT')}
+
+	   		//LS Admin: Modules 
+	   		//Assert page exists, upload new modules, verify new modules
+
+	   		//Click modules 'tab'
+	   		casper.thenClick(x('//*[@id="cmdlist"]/li[5]/a'))
+	   		//Wait for page to load
+	   		.waitForSelector('input[name=qqfile]', function() {
+	   			//Assert it is the correct page
+	   			casper.test.assertSelectorHasText('#site-title', 'Administration - Modules');
+	   			casper.capture("Scriptshots/LSAdmin_ModuleList.png")
+	   			//Click upload
+	   			.thenClick('input[name=qqfile]')
+	   			//Upload a New Module
+	   			.then(function(){
+	   				//upload file
+	   				casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/modules/' + modules);
+	   				//Verify new module
+	   				casper.wait(2000, function() { 
+	   					casper.test.assertTextExists('Test Mod', 'New Module Uploaded: ' + modules);
+	   				});
+	   			});	
+	   		})
+
+			//LS Admin: Asset Administrators
+	   		//Assert page exists, add new LS admin, verify new admin
+
+	   		//Click Administrators 'tab'
+	   		casper.thenClick(x('//*[@id="cmdlist"]/li[6]/a'))
+	   		
+	   		//Wait for page to load
+	   		.waitForSelector('#addperson', function() {
+	   			//Assert it is the correct page
+	   			casper.test.assertSelectorHasText('#site-title', 'Administration - System Administrators');
+	   			casper.capture("Scriptshots/LSAdmin_AdminList.png");
+	   			//Upload file
+	   			casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/Projects/PunchPro/Admins/' + admins);
+	   			//Submit
+	   			casper.thenClick('#addperson');
+	   			casper.thenClick(x('//*[@id="project-outer"]/section[1]/section/div/span[2]/div/div/div/input'));
+	   			//Verify new admin
+	   			casper.wait(2000, function() {
+	   				//The new admin is not being added since the update
+	   				casper.capture("Scriptshots/LSAdmin_AdminListUpdate.png")
+	   				casper.test.assertTextExists('New Admin', 'New Admin Uploaded: ' + admins); 
+	   				casper.capture("Scriptshots/LSAdmin_AdminListUpdate.png")
+	   			});	
+	   		})
+
+	   	} else { casper.echo('Skipping: Link Systems Admin Testing' , 'COMMENT')}
+
+	    	//Finished Link Systems Admin Testing
+	   		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//Sign In - Primary Contact Account Admin
+
+	   		if(PrimContactAdminTesting == true){
+	   			//Sign Out - only if LS Admin testing is being executed
+	   			if(LSAdminTesting == true){
+	   				casper.thenClick(x('//*[@id="topbar"]/div/div[1]/span/div/ul/li[3]'))
+	   			}
+	   			//Open sign in page
+	   			casper.thenOpen(env)
+	   			.then(function() {
+	   				casper.echo("Beginning Primary Contact Account Admin Testing..." , 'COMMENT')
+	   				//Login
+	   				.sendKeys('#username', accadmin)
+	   				.sendKeys('#userpassword', accadpw)
+
+	   				.thenClick('#signin-page .pp-signin-button')
+	   				//Wait for page to load
+	   				.waitForSelector('#newproject', function() {
+	   				//Verify Admin Account		
+	   				this.test.assertExists({
+	   					type: 'xpath',
+	   					path: '//*[@id="newproject"]'},
+	   					'Signed In -- as ' + accadmin);
+	   			});
+	   		})
+
+
+	   		//Create New Project Wizard
+	   		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//START
+	   		.then(function() {
+	   			casper.echo('Creating New Project. . . ', 'COMMENT');
+	   		});		
+
+
+	   		//Create new project
+	   		casper.thenClick('#newproject')
+	   	
+	   		casper.waitForSelector('#clientname', function() {
+	   			casper.fillSelectors('.wizard',{
+	   				'#clientname': 'NGD - ' + today,
+	   				'#projectname': 'Auto Script',
+	   				'#projectnumber': '12345',
+	   				'#address': "1 NGD Test Street, PA 12345",
+	   				'select#projecttype' : 'Office', 
+	   				'select[ng-model=projectsize]' : '0-5,000 sqft',
+	   			});
+	   			casper.thenClick(x('//*[@id="project-details"]/div[2]/div[5]/button'));
+	   			casper.capture('Scriptshots/NewProjectStep1.png');
+	   		})
+			
+	   		// TEAMS ///////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//Upload Team: CSV 	
+	   		
+	   		casper.thenClick('#teambutton button')
+	   		casper.then(function(){
+	   			//Upload file
+
+	   			casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/Projects/PunchPro/TeamMembers/' + wizteamcsv);
+	   			//Submit
+
+	   				casper.wait(2000, function() { 
+	   					
+	   					casper.thenClick(x('//*[@id="project-outer"]/section[1]/section/div/span[2]/div/div/div/input'))
+	   				});
+	   				//verify New Team Members
+	   				casper.wait(2000, function() { 		
+	   					casper.capture('test.png');
+	   					casper.test.assertTextExists('ngdqa2@gmail.com', 'New Team Members Uploaded via CSV: ' + wizteamcsv);
+	   				}).then(function(){
+	   					casper.click('.ngdialog-content div.ngdialog-close');
+	   				})
+	   			})
+	   		
+	   		// Upload Team: XLSX 
+	   		.thenClick('#teambutton button')
+	   		.then(function(){
+	   			//Upload file
+	   			casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/TeamMembers/' + wizteamxlsx);
+	   			//Submit
+	   			casper.thenClick(x('//*[@id="project-outer"]/section[1]/section/div/span[2]/div/div/div/input'))
+	   				//verify New Team Members
+	   				.wait(3000, function() { 		
+	   					casper.test.assertTextExists('ngdqa1@gmail.com', 'New Team Members Uploaded via XLSX: ' + wizteamxlsx);
+	   				}).then(function(){
+	   					casper.click('.ngdialog-content div.ngdialog-close');
+	   				})
+	   			})
+
+			//Upload Team: Manual    		 
+			.then(function() {
+				//Add a team member manually
+				casper.sendKeys('input[id=email]', 'lsautoad1@gyahoo.com')
+				casper.sendKeys('input[id=firstname]', 'Manual')
+				casper.sendKeys('input[id=lastname]', 'Member')
+				casper.sendKeys('input[id=company]', 'NGD Testing')
+				//Submit
+				.thenClick('#addperson');
+				casper.wait(1000, function () {
+					casper.capture('manualmember.png')
+					//Verify
+					casper.test.assertTextExists('lsautoad1@gyahoo.com', 'New Team Member Added Manually: lsautoad1@gyahoo.com');
+					casper.thenClick('.ngdialog-content div.ngdialog-close')
+					.then(function(){
+						casper.wait(500, function () {
+							casper.capture('Scriptshots/UploadedTeams.png');
+						});
+					});
+				});	
+			})
+
+	   		//PLANS ///////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//Upload Plans: Multiple  
+
+	   		.then(function(){
+	   			casper.thenClick(x('//*[@id="planupload"]/div/div/div/input'))
+	   			.page.uploadFile('input[name=qqfile]', [
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan0_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan1_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan2_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan3_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan4_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan5_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan6_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan7_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan8_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan9_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan10_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan11_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan12_Wizard.pdf',
+	   				'/Users/matt/Desktop/PunchPro/PDFs/Plan13_Wizard.pdf'
+	   				]);
+	   			
+	   			casper.then(function(){
+	   				casper.wait(15000, function(){
+	   					casper.test.assertTextExists('Plan13_Wizard.pdf', 'New Plans Added: Plans 0-13');
+	   				});
+	   			});
+
+	   		});
+
+			//SPACES ///////////////////////////////////////////////////////////////////////////////////////////////////
+			//Upload Spaces: CSV 					
+			casper.then(function(){
+				casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/Spaces/' + wizspacescsv);
+				casper.thenClick(x('//*[@id="project-details"]/div[5]/span/div/div/div/input'));
+				casper.wait(3000, function() { 		
+					casper.test.assertTextExists('CSV Wizard', 'New Spaces Uploaded via CSV: ' + wizspacescsv);
+				});
+			});
+			//Upload Spaces: XLSX 					
+			casper.then(function(){
+				casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/Spaces/' + wizspacesxlsx);
+				casper.thenClick(x('//*[@id="project-details"]/div[5]/span/div/div/div/input'));
+				casper.wait(3000, function() { 		
+					casper.test.assertTextExists('XLSX Wizard', 'New Spaces Uploaded via XLSX: ' + wizspacesxlsx);
+				});
+			});
+			//Upload Spaces: Manually 	
+			casper.then(function() {
+				casper.sendKeys('input[id=spacenumber]', '1')
+				casper.sendKeys('input[id=spacename]', 'Manual Space')
+				.thenClick(x('//*[@id="project-details"]/div[5]/div/div/div[2]/button'));
+				casper.wait (3000, function () {
+					casper.test.assertTextExists('Manual Space', 'New Space Added Manually: 101 Manual Space');
+				});	
+			});	
+
+			//Submit
+			casper.thenClick(x('//*[@id="project-details"]/div[6]/button'));
+
+			// Reopening the projects page since it refuses to close the popup above
+			casper.then(function(){	
+				casper.wait(3000, function() { 
+					//close alert box, cannot close this box.. reopening the page as a work around..
+					casper.thenOpen('http://uat1.punchproweb.com/customer/');
+					//open 'existing project'
+					casper.thenClick(x('//*[@id="project-list"]/div[2]/div[1]/a/div/span'));
+				});								
+			});
+
+			
+
+			// FINISHED CREATING NEW PROJECT
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////
+			//Repeat all of the above out side of project creation wizard
+			//Edit project information
+
+			casper.waitForSelector('#project-menu', function() { 	
+				this.test.assertExists("#project-menu",'Project creation wizard complete');
+				casper.then(function (){
+					casper.wait(1000, function(){
+						casper.test.assertSelectorHasText('#site-title', 'Existing Project');
+					});
+				});
+			});
+
+	   // 		casper.then(function(){
+	   // 			casper.thenClick(x('//*[@id="project-menu"]/a[2]/span/span'))
+
+	   			
+				// casper.wait(1000, function(){
+
+	   // 			casper.thenClick(x('//*[@id="plan-section"]/div[1]/span[2]/div/div/div'))
+	   // 				casper.wait(1000, function(){
+	   // 				casper.capture('postwizardplans.png');
+	   // 				});
+	   // 			});
+				// // PLans	
+	   // 			casper.page.uploadFile('input[name=qqfile]', [
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan0.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan1.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan2.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan3.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan4.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan5.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan6.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan7.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan8.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan9.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan10.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan11.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan12.pdf',
+	   // 				'/Users/matt/Desktop/PunchPro/PDFs/Plan13.pdf'
+	   // 				]);
+	   			
+	   // 			casper.then(function(){
+	   // 				casper.wait(15000, function(){
+	   // 					//casper.test.assertTextExists('Plan13.pdf', 'New Plans Added: Plans 0-13');
+
+	   // 				});
+	   // 			});
+
+	   // 		});
+
+
+			//Upload Spaces: CSV 					
+			casper.thenClick("a[ng-href='#/project/spaces/18/245']", function() {
+				casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/Spaces/' + spacescsv);
+				casper.thenClick(x('//*[@id="project-details"]/div[1]/span[2]/div/div/div/div'));
+				casper.wait(3000, function() { 	
+					
+					casper.test.assertTextExists('CSV Post Wizard', 'New Spaces Uploaded via CSV: ' + spacescsv);
+				});
+			});
+			//Upload Spaces: XLSX 					
+			casper.then(function(){
+				casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/Spaces/' + spacesxlsx);
+				casper.thenClick(x('//*[@id="project-details"]/div[1]/span[2]/div/div/div/input'));
+				casper.wait(3000, function() { 		
+					casper.test.assertTextExists('XLSX Post Wizard', 'New Spaces Uploaded via XLSX: ' + spacesxlsx);
+				});
+			});
+			//Upload Spaces: Manually 	
+			casper.then(function() {
+				casper.sendKeys('input[id=spacenumber]', '202')
+				casper.sendKeys('input[id=spacename]', 'Post Manual Space')
+				.thenClick(x('//*[@id="addspace"]'));
+				casper.wait (3000, function () {
+					casper.test.assertTextExists('Post Manual Space', 'New Space Added Manually: 202 Manual Space');
+				});	
+			});	
+
+
+			//Upload Team: CSV 	
+	   		
+	   		casper.thenClick('#teambutton button')
+	   		casper.then(function(){
+	   			//Upload file
+	   			casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/TeamMembers/' + wizteamcsv);
+	   			//Submit
+	   				casper.wait(2000, function() { 
+	   					casper.capture('test.png');
+	   					casper.thenClick(x('//*[@id="project-outer"]/section[1]/section/div/span[2]/div/div/div/input'))
+	   				});
+	   				//verify New Team Members
+	   				casper.wait(1000, function() { 		
+	   					casper.test.assertTextExists('ngdqa2@gmail.com', 'New Team Members Uploaded via CSV: ' + wizteamcsv);
+	   				}).then(function(){
+	   					casper.click('.ngdialog-content div.ngdialog-close');
+	   				})
+	   			})
+	   		
+	   		// Upload Team: XLSX 
+	   		.thenClick('#teambutton button')
+	   		.then(function(){
+	   			//Upload file
+	   			casper.page.uploadFile('input[name=qqfile]', '/Users/matt/Desktop/PunchPro/TeamMembers/' + wizteamxlsx);
+	   			//Submit
+	   			casper.thenClick(x('//*[@id="project-outer"]/section[1]/section/div/span[2]/div/div/div/input'))
+	   				//verify New Team Members
+	   				.wait(3000, function() { 		
+	   					casper.test.assertTextExists('ngdqa1@gmail.com', 'New Team Members Uploaded via XLSX: ' + wizteamxlsx);
+	   				}).then(function(){
+	   					casper.click('.ngdialog-content div.ngdialog-close');
+	   				})
+	   			})
+
+			//Upload Team: Manual    		 
+			.then(function() {
+				//Add a team member manually
+				casper.sendKeys('input[id=email]', 'lsautoad1@gyahoo.com')
+				casper.sendKeys('input[id=firstname]', 'Manual')
+				casper.sendKeys('input[id=lastname]', 'Member')
+				casper.sendKeys('input[id=company]', 'NGD Testing')
+				//Submit
+				.thenClick('#addperson');
+				casper.wait(1000, function () {
+					casper.capture('manualmember.png')
+					//Verify
+					casper.test.assertTextExists('lsautoad1@gyahoo.com', 'New Team Member Added Manually: lsautoad1@gyahoo.com');
+					casper.thenClick('.ngdialog-content div.ngdialog-close')
+					.then(function(){
+						casper.wait(500, function () {
+							casper.capture('Scriptshots/UploadedTeams.png');
+						});
+					});
+				});	
+			})
+
+
+
+
+
+			
+
+
+					
+			
+
+			
+
+		} else { casper.echo('Skipping: Primary Contact Admin Testing', 'COMMENT')}
+
+
+		
+		
+
+	   		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	   		//Sign In - Team Member 
+
+	   		if(TeamMemberTesting == true){
+	   			//sign out
+	   			casper.thenClick(x('//*[@id="topbar"]/div/div[1]/span[1]/div/ul/li[2]'))
+
+	   			casper.thenOpen(env)
+	   			.then(function() {
+	   				casper.echo("Beginning Team Member Testing..." , 'COMMENT');
+	   				casper.sendKeys('#username', teammem);
+	   				casper.sendKeys('#userpassword', tmpw);
+	   				casper.thenClick(x('//*[@id="inner-signin-page"]/div[4]/button'))
+	   				.wait(3000, function() {
+	   					if(this.exists('#newproject')) {
+	   						this.echo('Failed to sign in as Team Member'); } else { 
+	   							this.echo('PASS Signed in -- as ' + teammem); 
+	   						} 
+	   					});
+	   			});	
+	   		//Project Information are View Only
+	   		casper.then(function() {
+	   			casper.thenClick('[src="http://uat1.punchproweb.com/projects/104/cover.jpg"]');
+	   			casper.waitForSelector('#clientname', function (){
+	   				casper.wait(500, function(){
+	   					casper.test.assertDoesntExist('span#pp-editicon:not(.ng-hide)', 'Project Information: View Only')
+	   				});
+	   			});
+	   		});
+	   		//Plans are View Only
+	   		casper.then(function() {
+	   			casper.thenClick("a[ng-href='#/project/plans/5/104']", function() {
+	   				casper.wait(500, function(){
+	   					casper.test.assertDoesntExist('span#pp-editicon:not(.ng-hide)', 'Plans: View Only')
+	   				});
+	   			});
+	   		});
+	   		//Spaces are View Only
+	   		casper.then(function() {
+	   			casper.thenClick("a[ng-href='#/project/spaces/5/104']", function() {
+	   				casper.wait(500, function(){
+	   					casper.capture('SpaceView.png')
+	   					casper.test.assertDoesntExist('span#pp-editicon:not(.ng-hide)', 'Spaces: View Only')
+	   					//casper.test.assertExist('button.pp-button', 'Spaces: Able to Remove')
+	   				});
+	   			});
+	   		});
+	   		//Team are View Only
+	   		casper.then(function() {
+	   			casper.thenClick("a[ng-href='#/project/team/5/104']", function() {
+	   				casper.wait(500, function(){
+	   					casper.capture('TeamView.png')
+	   					casper.test.assertDoesntExist('pp-button#addperson:not(.ng-hide)', 'Team: View Only')
+	   				});
+	   			});
+	   		});
+	   		//Reports are View Only
+	   		casper.then(function() {
+	   			casper.thenClick("a[ng-href='#/project/spaces/5/104']", function() {
+	   				casper.wait(500, function(){
+	   					casper.capture('SpaceView.png')
+	   					casper.test.assertDoesntExist('span#pp-editicon:not(.ng-hide)', 'Reports: View Only')
+	   					//casper.test.assertExist('button.pp-button', 'Spaces: Able to Remove')
+	   				});
+	   			});
+	   		});
+
+	   	} else { casper.echo('Skipping: Team Member Testing', 'COMMENT')}
+
+
+
+
+
+
+
+
+
+
+
+	   	casper.run();
+
+
+
+
+
+
+
+
+
